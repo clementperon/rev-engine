@@ -150,13 +150,17 @@ export async function runClaudeCode(options: AgentOptions, settings: ClaudeCodeS
       "--allowedTools", `mcp__${SERVER}`,
       "--setting-sources", "",
       "--json-schema", JSON.stringify(submit.function.parameters),
-      "--max-turns", String(maxTurns),
       ...(settings.effort ? ["--effort", settings.effort] : []),
     ];
-    let args = [...common, "--system-prompt", options.system + toolNote(submit.function.name), options.prompt];
+    let args = [...common, "--max-turns", String(maxTurns), "--system-prompt", options.system + toolNote(submit.function.name), options.prompt];
     for (let round = 1; ; round += 1) {
-      const result = await runClaude(args, cwd, deadline - Date.now());
+      let result = await runClaude(args, cwd, deadline - Date.now());
       log(`${who}: round ${round}: ${result.subtype ?? "done"} after ${result.num_turns ?? "?"} turn(s), $${(result.total_cost_usd ?? 0).toFixed(4)} at API prices`);
+      if (result.subtype === "error_max_turns" && result.session_id) {
+        const wrapUp = `Stop investigating. Give your ${submit.function.name} answer as your structured output now, with what you have established so far.`;
+        result = await runClaude([...common, "--max-turns", "3", "--resume", result.session_id, wrapUp], cwd, deadline - Date.now());
+        log(`${who}: round ${round} wrap-up: ${result.subtype ?? "done"}, $${(result.total_cost_usd ?? 0).toFixed(4)} at API prices`);
+      }
       const value = result.structured_output;
       if (result.is_error || !value || typeof value !== "object" || Array.isArray(value)) {
         throw new Error(`${who}: claude returned no ${submit.function.name} output (${result.subtype ?? "error"}): ${String(result.result ?? "").slice(0, 300)}`);
@@ -164,7 +168,7 @@ export async function runClaudeCode(options: AgentOptions, settings: ClaudeCodeS
       submissions.push(value as Record<string, unknown>);
       const next = secondLook && result.session_id && deadline - Date.now() > 200_000 ? secondLook.message(submissions.length) : null;
       if (!next) break;
-      args = [...common, "--resume", result.session_id!, next];
+      args = [...common, "--max-turns", String(maxTurns), "--resume", result.session_id!, next];
     }
   } catch (error) {
     if (!submissions.length) throw error;

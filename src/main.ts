@@ -2,6 +2,7 @@
 import { mkdir, rename, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
 import { describeSettings, loadConfig, type Config } from "./config.ts";
+import { claudeCodeChat } from "./claude-code.ts";
 import { createChat, emptyUsage, type Chat, type ChatMessage, type Usage } from "./llm.ts";
 import type { OutputFinding } from "./findings.ts";
 import { naiveReview } from "./naive.ts";
@@ -61,7 +62,9 @@ async function writeTranscripts(): Promise<void> {
 }
 
 try {
-  const send = createChat({ apiKey: config.apiKey, baseUrl: config.baseUrl, effort: config.effort, usage, usageByCaller });
+  const send = config.engine === "claude-code"
+    ? claudeCodeChat({ effort: config.effort })
+    : createChat({ apiKey: config.apiKey, baseUrl: config.baseUrl, effort: config.effort, usage, usageByCaller });
   const chat: Chat = config.transcriptOutPath
     ? (request) => {
       transcripts.set(request.caller ?? request.model, { model: request.model, messages: request.messages });

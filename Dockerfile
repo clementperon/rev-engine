@@ -9,6 +9,10 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends git ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
+# Claude Code, for RB_CONFIG_ENGINE=claude-code.
+ARG CLAUDE_CODE_VERSION=latest
+RUN npm install -g @anthropic-ai/claude-code@${CLAUDE_CODE_VERSION} && npm cache clean --force
+
 # Make Node's built-in fetch use the forward proxy named in HTTPS_PROXY.
 ENV NODE_USE_ENV_PROXY=1
 

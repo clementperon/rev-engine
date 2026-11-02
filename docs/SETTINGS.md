@@ -6,6 +6,7 @@ If you use the GitHub Action, set its inputs instead. They are listed in [INSTAL
 
 | Variable | Default | Meaning |
 |---|---|---|
+| `RB_CONFIG_ENGINE` | `api` | `claude-code` runs each review, verification and fit pass with `claude -p` instead of the chat API, using its login (`CLAUDE_CODE_OAUTH_TOKEN` from `claude setup-token`) in place of `OPENROUTER_API_KEY`. Claude Code reads the checkout only through the reviewer's read tools. Models are Claude models, such as `anthropic/claude-opus-5.5` or `opus`. The naive and swarm reviews are not supported. |
 | `RB_CONFIG_MODEL` | `openai/gpt-6-luna` | Reviewer model. A comma-separated list runs one independent review per model. A model followed by `@maintainability` or `@tests` reviews for that one thing only, in place of the full review. |
 | `RB_CONFIG_VERIFIER` | first reviewer model | Model for the verification pass. |
 | `RB_CONFIG_VERIFY` | `lenient` | `lenient` drops rejected findings, `strict` keeps only confirmed ones, `off` skips the pass. |

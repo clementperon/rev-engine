@@ -20,6 +20,8 @@ export interface Config {
   outPath: string;
   /** Which attempt at this pull request this is, starting at 1. */
   attempt: number;
+  /** "api" calls the chat API with apiKey; "claude-code" runs each pass with `claude -p`. */
+  engine: "api" | "claude-code";
   apiKey: string;
   baseUrl: string;
   /** One independent review seat per model. */
@@ -124,6 +126,10 @@ export function loadConfig(env: Env): Config {
   if (!["on", "off"].includes(swarm)) throw new Error("RB_CONFIG_SWARM must be on or off");
   if (naive === "on" && swarm === "on") throw new Error("RB_CONFIG_NAIVE and RB_CONFIG_SWARM cannot both be on");
 
+  const engine = (env.RB_CONFIG_ENGINE?.trim() || "api") as Config["engine"];
+  if (engine !== "api" && engine !== "claude-code") throw new Error("RB_CONFIG_ENGINE must be api or claude-code");
+  if (engine === "claude-code" && (naive === "on" || swarm === "on")) throw new Error("RB_CONFIG_ENGINE=claude-code does not support RB_CONFIG_NAIVE or RB_CONFIG_SWARM");
+
   const minSeverity = (env.RB_CONFIG_MIN_SEVERITY?.trim() || "low") as Severity;
   if (!["high", "medium", "low"].includes(minSeverity)) throw new Error("RB_CONFIG_MIN_SEVERITY must be high, medium or low");
 
@@ -144,7 +150,8 @@ export function loadConfig(env: Env): Config {
     priorJsonPath: env.RB_PRIOR_JSON?.trim() || "/work/pr/prior.json",
     outPath,
     attempt: integer(env, "RB_ATTEMPT", 1, 1, 1000),
-    apiKey: required(env, "OPENROUTER_API_KEY"),
+    engine,
+    apiKey: engine === "api" ? required(env, "OPENROUTER_API_KEY") : "",
     baseUrl: (env.RB_MODEL_BASE_URL?.trim() || DEFAULT_BASE_URL).replace(/\/+$/, ""),
     models,
     focuses,
@@ -174,6 +181,7 @@ export function describeSettings(config: Config): string {
   if (config.naive) return `naive=on model=${config.models[0]} mode=${config.mode} max_findings=${config.maxFindings} time_budget=${config.budgetMs / 1000}`;
   if (config.swarm) return `swarm=on model=${config.models[0]} verifier=${config.verifierModel} verify=${config.verify} effort=${config.effort ?? "default"} mode=${config.mode} max_findings=${config.maxFindings} time_budget=${config.budgetMs / 1000} max_turns=${config.maxTurns}`;
   return [
+    `engine=${config.engine}`,
     `model=${config.models.map((model, index) => (config.focuses[index] ? `${model}@${config.focuses[index]}` : model)).join(",")}`,
     `verifier=${config.verifierModel}`,
     `verify=${config.verify}`,

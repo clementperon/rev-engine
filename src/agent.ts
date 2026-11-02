@@ -3,6 +3,7 @@
 //
 // Using a tool for the final answer works with any model that can call tools,
 // and the arguments are checked as JSON before the loop accepts them.
+import { claudeCodeSettings, runClaudeCode } from "./claude-code.ts";
 import { ModelError, type Chat, type ChatMessage } from "./llm.ts";
 import { readTools, type ToolDefinition, type Workspace } from "./tools.ts";
 
@@ -115,6 +116,8 @@ interface Held {
 }
 
 export async function runAgent(options: AgentOptions): Promise<Record<string, unknown>> {
+  const claudeCode = claudeCodeSettings(options.chat);
+  if (claudeCode) return runClaudeCode(options, claudeCode);
   // What was handed in is kept, so a failure later on still returns that work.
   const held: Held = { submissions: [], partial: null };
   try {
